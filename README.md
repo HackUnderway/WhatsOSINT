@@ -3,40 +3,6 @@ View data of a WhatsApp number, including its status, photo, etc. 🕵🏽‍♂
 
 [![Join our Fanpage](https://img.shields.io/badge/Join%20Our%20Fanpage-Hack%20Underway-1.svg)](https://www.facebook.com/HackUnderway/)
 
-# Example
-Run in the terminal
-```bash
-python3 WhatsOSINT.py
-
-     __i
-    |---|    
-    |[_]|    
-    |:::|    
-    |:::|    
-    `\   \   
-      \_=_\ 
-    Consulta de datos de número de WhatsApp
-    
-Introduce el número de teléfono (con código de país): 51916574069
-id:     server: c.us
-    user: 51916574069
-    _serialized: 51916574069@c.us
-number: 51916574069
-isBusiness: False
-isEnterprise: False
-isMe: False
-isUser: True
-isGroup: False
-isWAContact: True
-isMyContact: False
-isBlocked: False
-profilePic: https://pps.whatsapp.net/v/t61.24694-24/300893760_1076868179662816_2484436386286993519_n.jpg?ccb=11-4&oh=01_Q5AaIIOmBw-wbpkllZH27Do3Jt7af9TN1IrQ0zFfOOJn2MBI&oe=67491686&_nc_sid=5e03e0&_nc_cat=106                                                
-about: Information - Technology - Security
-countryCode: PE
-phone: +51 916 574 069
-
-```
-
 <img src="https://github.com/HackUnderway/WhatsOSINT/blob/main/img/Demo.png" title="WhatsOSINT">
 
 # 🔑 API Key
@@ -101,6 +67,10 @@ Youtube: https://www.youtube.com/@JeyZetaOficial
 ```
 [![Kali Linux Badge](https://img.shields.io/badge/Kali%20Linux-1793D1?logo=kalilinux&logoColor=fff&style=plastic)](https://www.facebook.com/HackUnderway/)
 
-from <img src="https://i.imgur.com/ngJCbSI.png" title="Perú"> made in <img src="https://i.imgur.com/NNfy2o6.png" title="Python"> with <img src="http://cdn0.bodas.com.mx/img/smileys/smiley_heart.png" title="Love"> by: <font color="red">Victor Bancayan</font>, if you want Donate <a href="https://www.buymeacoffee.com/HackUnderway"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=HackUnderway&button_colour=40DCA5&font_colour=ffffff&font_family=Comic&outline_colour=000000&coffee_colour=FFDD00" /></a>
+## ☕️ Support the project
 
-© 2024
+[![Buy Me a Coffee](https://img.shields.io/badge/-Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/hackunderway)
+
+from <img src="https://i.imgur.com/ngJCbSI.png" title="Perú"> made in <img src="https://i.imgur.com/NNfy2o6.png" title="Python"> with <img src="https://i.imgur.com/S86RzPA.png" title="Love"> by: <font color="red">Victor Bancayan</font>
+
+© 2025
