@@ -1,5 +1,13 @@
 """HTTP client package for WhatsOSINT number checks."""
 
+from whatsosint_client.client import CacheResult, CheckerError, WhatsOSINTClient
 from whatsosint_client.config import Config, ConfigError, load_config
 
-__all__ = ["Config", "ConfigError", "load_config"]
+__all__ = [
+    "Config",
+    "ConfigError",
+    "load_config",
+    "WhatsOSINTClient",
+    "CheckerError",
+    "CacheResult",
+]
