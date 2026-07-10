@@ -42,12 +42,21 @@ Validation happens at startup, before any network call:
 
 ## Empirical findings (verified live this session)
 
-- Miss shape is identical across both endpoints and both providers: HTTP
-  **200** with a top-level `"error"` string and no `"exists"` key, e.g.
-  `{"error":"Whatsapp number is not in the Database records","under_maintenance":false,"fbLeak":{...}}`.
+- **Cache-miss shape (current, post backend update on 2026-07-09)**: real HTTP
+  **404**, body carries a machine-readable `"code":"NOT_IN_DATABASE"` (plus a
+  redundant `"status":404` and a human-readable `"error"` string), e.g.
+  `{"error":"Whatsapp number is not in the Database records","under_maintenance":false,"fbLeak":{...},"status":404,"code":"NOT_IN_DATABASE"}`.
+  (The API previously returned this same body shape under HTTP 200 — the
+  maintainer changed it to a real 404 mid-session; verified live against both
+  providers after the change. Design below uses status-code detection, not
+  body-shape sniffing, so it doesn't matter which shape ships.)
+- **Live endpoint, malformed input**: HTTP **400** with
+  `{"error":"Invalid phone number, please provide a valid formatted phone number, ...","success":null}`
+  — this is a *distinct* case from a cache/DB miss (bad input vs. legitimately
+  absent number) and must not be treated as "miss"/trigger any fallback.
 - Hit shape: `"exists": true` plus full `WhatsAppEntry` fields (`phone`,
-  `profilePic`, `carrierData`, `fbLeak`, etc.) — identical shape from cache
-  and live once a number is cached.
+  `profilePic`, `carrierData`, `fbLeak`, etc.), HTTP 200 — confirmed
+  unaffected by the not-found change (re-checked after the update).
 - rapidapi provider requires both `x-rapidapi-key` and `x-rapidapi-host`
   headers (host = whichever of `RAPIDAPI_HOST` / `RAPIDAPI_CACHE_HOST`
   matches the endpoint being called).
@@ -57,9 +66,11 @@ Validation happens at startup, before any network call:
   while a missing/wrong header name gets `"API key missing"`. No
   `x-rapidapi-host` header is needed or checked on this domain. A working
   native-tier key was minted for this session (`pro` role) to confirm.
-- **Miss vs. error distinction**: a "miss" is a normal 200 response, not an
-  HTTP error — `raise_for_status()`-style handling is untouched; the miss
-  check is purely a body-shape check performed after a successful HTTP call.
+- **Miss vs. error distinction**: cache-miss (404) is a normal, expected
+  outcome of `/number_cache` — not a transport error. It is the *only*
+  non-2xx status that endpoint returns for legitimate business reasons;
+  anything else (401/429/5xx) is a real error. The live endpoint's error
+  conventions (400 for bad input, etc.) are untouched from today's script.
 
 ## Architecture
 
@@ -72,17 +83,22 @@ New package `whatsosint_client/` alongside `WhatsOSINT.py`:
   -> (url, headers)`, where `endpoint_kind` is `"live"` or `"cache"`. Holds
   the 2×2 provider/endpoint → (base URL, path, header set) mapping.
 - **`client.py`** — `WhatsOSINTClient`:
-  - `fetch_live(number)`, `fetch_cache(number)` — single HTTP calls via a
-    `requests.Session`, each raising `CheckerError` (wraps
-    `requests.exceptions.RequestException` with provider/endpoint context)
-    on transport/HTTP failure.
-  - `is_miss(data: dict) -> bool`: `"error" in data and "exists" not in data`.
-  - `check(number)` — dispatches on `config.mode`:
+  - `fetch_live(number) -> dict` — single HTTP call, behavior **unchanged**
+    from today's script: `raise_for_status()` then `.json()`, so any non-2xx
+    (400 bad input, 401, etc.) raises `CheckerError` exactly as it does now
+    (preserves live-mode back-compat byte-for-byte).
+  - `fetch_cache(number) -> CacheResult` (`CacheResult(status_code: int, data:
+    dict)`) — treats **200 and 404 as normal business responses** (parses and
+    returns the body either way); any other status (401/429/5xx) raises
+    `CheckerError`. 404 is a legitimate "not in DB" outcome for this endpoint,
+    not a transport error.
+  - `check(number) -> dict` — dispatches on `config.mode`:
     - `live`: `fetch_live(number)`.
-    - `cache_only`: `fetch_cache(number)`, returned as-is (even if a miss).
-    - `cache_first`: `fetch_cache(number)`; on transport/HTTP failure *or*
-      `is_miss()`, fall back to `fetch_live(number)`; otherwise return the
-      cache result.
+    - `cache_only`: `fetch_cache(number).data`, returned as-is regardless of
+      status (even 404 — the caller just sees the not-found body).
+    - `cache_first`: call `fetch_cache(number)`; if it raised `CheckerError`
+      *or* its `status_code == 404`, fall back to `fetch_live(number)`;
+      otherwise return `.data`.
 
 `WhatsOSINT.py` changes: `consultar_numero_whatsapp(number)` builds a
 `Config`/`WhatsOSINTClient` and delegates to `client.check(number)` instead of
@@ -101,9 +117,20 @@ returns whichever single response was the last one fetched.
 - Any transport/HTTP failure raises `CheckerError` with provider/endpoint
   context; `WhatsOSINT.py` keeps its existing top-level try/except in
   `consultar_numero_whatsapp` for user-facing colored error output.
-- `cache_first`: a transport/HTTP failure on the *cache* call is treated like
-  a miss (falls back to live, best-effort); a failure on the subsequent live
-  call propagates normally.
+- `fetch_live` is untouched from today: any non-2xx (400 malformed input, 401,
+  etc.) raises via `raise_for_status()`, same as the current script.
+- `fetch_cache` treats only `200`/`404` as business responses; `404` means
+  "not in DB", not an error. Any other status (401 bad key, 429 rate limit,
+  5xx) raises `CheckerError`.
+- `cache_first`: falls back to `fetch_live` when the cache call either raises
+  `CheckerError` (network/auth/rate-limit failure — best-effort) or returns
+  `status_code == 404` (genuine cache miss). A subsequent failure on the live
+  call propagates normally (no further fallback — live is the last tier).
+- A `400` from `fetch_cache` (should not happen per the endpoint's contract,
+  but if the upstream ever adds input validation there too) raises like any
+  other non-200/404 status — it is **not** treated as a miss and does **not**
+  trigger fallback, since retrying the same malformed input against live
+  would just fail identically.
 - Config errors fail fast (before any network call) with a clear message,
   mirroring the script's existing guard for empty phone number input.
 
@@ -118,13 +145,15 @@ New `requirements-dev.txt`: `pytest`, `requests-mock`.
   url/headers for all 4 provider×endpoint combinations.
 - `tests/test_client.py` (via `requests_mock`, parametrized over both
   providers):
-  - `live` mode calls only the live endpoint.
-  - `cache_only` mode calls only the cache endpoint and returns hit/miss
-    bodies untouched.
-  - `cache_first` mode: cache hit → only the cache endpoint is called (assert
-    via `requests_mock` call history — live must NOT be called); cache miss →
-    both endpoints called, live response returned; cache transport error →
-    falls back to live.
+  - `live` mode calls only the live endpoint; a mocked 400 raises
+    `CheckerError` (back-compat check).
+  - `cache_only` mode calls only the cache endpoint and returns the 200-hit
+    and 404-miss bodies untouched (asserting the 404 does *not* raise).
+  - `cache_first` mode: cache hit (200) → only the cache endpoint is called
+    (assert via `requests_mock` call history — live must NOT be called);
+    cache miss (404) → both endpoints called, live response returned; cache
+    transport/5xx/401 error → falls back to live; a mocked cache `400` raises
+    `CheckerError` and does **not** call live.
 
 No committed test hits the real third-party API — all HTTP is mocked, so the
 suite needs no live credentials and costs nothing to run in CI. The real-API
