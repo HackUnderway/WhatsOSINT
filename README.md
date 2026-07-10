@@ -21,6 +21,34 @@ When you have your API key, you can add it to the **.env** file Replacing **"You
 
 > **The project is open to partners.**
 
+# ⚙️ Checking modes (save cost)
+
+By default WhatsOSINT does a full **live** check on every lookup. You can
+switch to cheaper strategies via environment variables in your `.env`:
+
+| `CHECK_MODE` | What it does | Cost |
+| --- | --- | --- |
+| `live` (default) | Always performs a fresh live WhatsApp check | Highest |
+| `cache_first` | Reads the cached database first; only falls back to a live check when the number isn't cached yet | Medium |
+| `cache_only` | Only reads the cached database, never does a live check | Lowest |
+
+You can also choose the transport with `CHECK_PROVIDER`:
+
+| `CHECK_PROVIDER` | Host | Auth |
+| --- | --- | --- |
+| `rapidapi` (default) | RapidAPI marketplace | `RAPIDAPI_KEY` |
+| `native` | Direct `checkleaked.cc` endpoint | `NATIVE_API_KEY` (a separate, non-RapidAPI credential) |
+
+Example `.env` for the cheapest possible checks:
+
+```
+RAPIDAPI_KEY=your_rapidapi_key
+CHECK_MODE=cache_only
+```
+
+All settings are optional — omitting them reproduces the original live-check
+behavior exactly.
+
 # SUPPORTED DISTRIBUTIONS
 |Distribution | Version Check | supported | status |
 ----------|-------|------|-------|
@@ -43,6 +71,13 @@ python3 WhatsOSINT.py
 # REQUIREMENTS
 ```
 pip install -r requirements.txt
+```
+# DEVELOPMENT / TESTS
+Install the dev tooling and run the unit tests (all HTTP is mocked — no API
+key or network needed):
+```
+pip install -r requirements-dev.txt
+python -m pytest tests/ -v
 ```
 # SUPPORT
 Questions, bugs or suggestions to : info@hackunderway.com
