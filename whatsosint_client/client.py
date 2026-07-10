@@ -41,7 +41,9 @@ class WhatsOSINTClient:
     def _get(self, endpoint_kind: str, number: str) -> requests.Response:
         url, headers = build_request(self.config, endpoint_kind, number)
         try:
-            return self.session.get(url, headers=headers)
+            return self.session.get(
+                url, headers=headers, timeout=self.config.timeout_seconds
+            )
         except requests.exceptions.RequestException as exc:
             raise CheckerError(
                 "{provider} {kind} request failed: {exc}".format(
@@ -62,6 +64,18 @@ class WhatsOSINTClient:
                 status_code=response.status_code,
             ) from exc
 
+    @staticmethod
+    def _json_or_text(response: requests.Response) -> dict:
+        """Parse a body as JSON, falling back to wrapping the raw text.
+
+        Used for the 404 cache-miss path, which must never raise on an
+        unparseable body — the miss itself is the meaningful signal.
+        """
+        try:
+            return response.json()
+        except ValueError:
+            return {"error": response.text, "status": response.status_code}
+
     def fetch_live(self, number: str) -> dict:
         response = self._get("live", number)
         try:
@@ -79,17 +93,20 @@ class WhatsOSINTClient:
 
     def fetch_cache(self, number: str) -> CacheResult:
         response = self._get("cache", number)
-        if response.status_code not in (_CACHE_HIT, _CACHE_MISS):
-            raise CheckerError(
-                "{provider} cache returned HTTP {code}: {text}".format(
-                    provider=self.config.provider,
-                    code=response.status_code,
-                    text=response.text,
-                ),
-                status_code=response.status_code,
-            )
-        return CacheResult(
-            status_code=response.status_code, data=self._json(response, "cache")
+        status = response.status_code
+        if status == _CACHE_MISS:
+            # 404 is the cache-miss signal and must ALWAYS yield a CacheResult
+            # (so cache_first falls back and cache_only returns the miss),
+            # regardless of whether the body parses as JSON. A CDN/gateway can
+            # front a 404 with an HTML/empty body, so tolerate a non-JSON body.
+            return CacheResult(status_code=status, data=self._json_or_text(response))
+        if status == _CACHE_HIT:
+            return CacheResult(status_code=status, data=self._json(response, "cache"))
+        raise CheckerError(
+            "{provider} cache returned HTTP {code}: {text}".format(
+                provider=self.config.provider, code=status, text=response.text
+            ),
+            status_code=status,
         )
 
     @staticmethod

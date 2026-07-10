@@ -1,6 +1,7 @@
 """Build the URL + headers for a given provider and endpoint."""
 
 from typing import Dict, Tuple
+from urllib.parse import quote
 
 from whatsosint_client.config import Config
 
@@ -29,7 +30,9 @@ def build_request(
             )
         )
 
-    path = _PATHS[endpoint_kind].format(number=number)
+    # Percent-encode the number so a value with spaces, '+', or '/' can't
+    # mangle or escape the intended path. Digit-only input is unchanged.
+    path = _PATHS[endpoint_kind].format(number=quote(str(number), safe=""))
 
     if config.provider == "rapidapi":
         host = getattr(config, _RAPIDAPI_HOSTS[endpoint_kind])

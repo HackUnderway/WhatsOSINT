@@ -47,7 +47,12 @@ CHECK_MODE=cache_only
 ```
 
 All settings are optional — omitting them reproduces the original live-check
-behavior exactly.
+behavior exactly. You can also set `CHECK_TIMEOUT_SECONDS` (default `60`) to
+bound how long a request waits before giving up.
+
+> ⚠️ **Never commit a real key.** The tracked `.env` ships with the
+> `Your_Api_Key` placeholder — replace it locally, but do not `git commit`
+> your real key back into the repo.
 
 # SUPPORTED DISTRIBUTIONS
 |Distribution | Version Check | supported | status |

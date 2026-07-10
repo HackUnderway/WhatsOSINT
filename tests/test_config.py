@@ -1,3 +1,5 @@
+import dataclasses
+
 import pytest
 
 from whatsosint_client.config import (
@@ -7,6 +9,7 @@ from whatsosint_client.config import (
     DEFAULT_RAPIDAPI_HOST,
     DEFAULT_RAPIDAPI_CACHE_HOST,
     DEFAULT_NATIVE_BASE_URL,
+    DEFAULT_TIMEOUT_SECONDS,
 )
 
 
@@ -89,5 +92,53 @@ def test_native_base_url_override():
 
 def test_config_is_frozen():
     cfg = load_config({"RAPIDAPI_KEY": "k"})
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         cfg.provider = "native"  # type: ignore[misc]
+
+
+def test_timeout_defaults():
+    cfg = load_config({"RAPIDAPI_KEY": "k"})
+    assert cfg.timeout_seconds == DEFAULT_TIMEOUT_SECONDS
+
+
+def test_timeout_override():
+    cfg = load_config({"RAPIDAPI_KEY": "k", "CHECK_TIMEOUT_SECONDS": "5"})
+    assert cfg.timeout_seconds == 5.0
+
+
+def test_timeout_non_numeric_raises():
+    with pytest.raises(ConfigError) as exc:
+        load_config({"RAPIDAPI_KEY": "k", "CHECK_TIMEOUT_SECONDS": "soon"})
+    assert "CHECK_TIMEOUT_SECONDS" in str(exc.value)
+
+
+@pytest.mark.parametrize("bad", ["0", "-3"])
+def test_timeout_non_positive_raises(bad):
+    with pytest.raises(ConfigError) as exc:
+        load_config({"RAPIDAPI_KEY": "k", "CHECK_TIMEOUT_SECONDS": bad})
+    assert "CHECK_TIMEOUT_SECONDS" in str(exc.value)
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_host_env_falls_back_to_default(blank):
+    cfg = load_config(
+        {
+            "RAPIDAPI_KEY": "k",
+            "RAPIDAPI_HOST": blank,
+            "RAPIDAPI_CACHE_HOST": blank,
+        }
+    )
+    assert cfg.rapidapi_host == DEFAULT_RAPIDAPI_HOST
+    assert cfg.rapidapi_cache_host == DEFAULT_RAPIDAPI_CACHE_HOST
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_native_base_url_falls_back_to_default(blank):
+    cfg = load_config(
+        {
+            "CHECK_PROVIDER": "native",
+            "NATIVE_API_KEY": "nk",
+            "NATIVE_BASE_URL": blank,
+        }
+    )
+    assert cfg.native_base_url == DEFAULT_NATIVE_BASE_URL

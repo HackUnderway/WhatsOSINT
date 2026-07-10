@@ -10,6 +10,9 @@ VALID_MODES = ("live", "cache_first", "cache_only")
 DEFAULT_RAPIDAPI_HOST = "wp-data.p.rapidapi.com"
 DEFAULT_RAPIDAPI_CACHE_HOST = "wp-data-db-only.p.rapidapi.com"
 DEFAULT_NATIVE_BASE_URL = "https://whatsapp-proxy.checkleaked.cc"
+# Generous default: a live WhatsApp check can legitimately take many seconds,
+# so this only guards against a truly hung host (see CHECK_TIMEOUT_SECONDS).
+DEFAULT_TIMEOUT_SECONDS = 60.0
 
 
 class ConfigError(ValueError):
@@ -25,6 +28,13 @@ class Config:
     rapidapi_cache_host: str
     native_api_key: str
     native_base_url: str
+    timeout_seconds: float
+
+
+def _resolve(source: Mapping[str, str], key: str, default: str) -> str:
+    """Return the trimmed env value for key, falling back to default when the
+    value is absent, empty, or whitespace-only."""
+    return source.get(key, "").strip() or default
 
 
 def load_config(env: Optional[Mapping[str, str]] = None) -> Config:
@@ -63,16 +73,36 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Config:
             "NATIVE_API_KEY is required when CHECK_PROVIDER=native."
         )
 
+    raw_timeout = source.get("CHECK_TIMEOUT_SECONDS", "").strip()
+    if raw_timeout:
+        try:
+            timeout_seconds = float(raw_timeout)
+        except ValueError:
+            raise ConfigError(
+                "Invalid CHECK_TIMEOUT_SECONDS={!r}. Expected a number.".format(
+                    raw_timeout
+                )
+            )
+        if timeout_seconds <= 0:
+            raise ConfigError(
+                "CHECK_TIMEOUT_SECONDS must be greater than 0 (got {}).".format(
+                    timeout_seconds
+                )
+            )
+    else:
+        timeout_seconds = DEFAULT_TIMEOUT_SECONDS
+
     return Config(
         provider=provider,
         mode=mode,
         rapidapi_key=rapidapi_key,
-        rapidapi_host=source.get("RAPIDAPI_HOST", DEFAULT_RAPIDAPI_HOST).strip(),
-        rapidapi_cache_host=source.get(
-            "RAPIDAPI_CACHE_HOST", DEFAULT_RAPIDAPI_CACHE_HOST
-        ).strip(),
+        rapidapi_host=_resolve(source, "RAPIDAPI_HOST", DEFAULT_RAPIDAPI_HOST),
+        rapidapi_cache_host=_resolve(
+            source, "RAPIDAPI_CACHE_HOST", DEFAULT_RAPIDAPI_CACHE_HOST
+        ),
         native_api_key=native_api_key,
-        native_base_url=source.get(
-            "NATIVE_BASE_URL", DEFAULT_NATIVE_BASE_URL
-        ).strip(),
+        native_base_url=_resolve(
+            source, "NATIVE_BASE_URL", DEFAULT_NATIVE_BASE_URL
+        ),
+        timeout_seconds=timeout_seconds,
     )
