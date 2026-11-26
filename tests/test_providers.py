@@ -10,10 +10,10 @@ NATIVE_ENV = {"CHECK_PROVIDER": "native", "NATIVE_API_KEY": "nk"}
 def test_rapidapi_live_url_and_headers():
     cfg = load_config(RAPIDAPI_ENV)
     url, headers = build_request(cfg, "live", "59898297150")
-    assert url == "https://wp-data.p.rapidapi.com/number/59898297150"
+    assert url == "https://whatsapp-number-validator18.p.rapidapi.com/number/59898297150"
     assert headers == {
         "x-rapidapi-key": "rk",
-        "x-rapidapi-host": "wp-data.p.rapidapi.com",
+        "x-rapidapi-host": "whatsapp-number-validator18.p.rapidapi.com",
     }
 
 
