@@ -20,7 +20,7 @@ MISS_BODY = {
 PROVIDER_CASES = [
     (
         {"RAPIDAPI_KEY": "rk"},
-        "https://wp-data.p.rapidapi.com/number/" + NUMBER,
+        "https://whatsapp-number-validator18.p.rapidapi.com/number/" + NUMBER,
         "https://wp-data-db-only.p.rapidapi.com/number_cache/" + NUMBER,
     ),
     (
@@ -220,14 +220,14 @@ def test_cache_first_cache_4xx_raises_and_skips_live(
 def test_rapidapi_sends_both_headers():
     with requests_mock.Mocker() as m:
         m.get(
-            "https://wp-data.p.rapidapi.com/number/" + NUMBER,
+            "https://whatsapp-number-validator18.p.rapidapi.com/number/" + NUMBER,
             json=HIT_BODY,
             status_code=200,
         )
         _client({"RAPIDAPI_KEY": "rk", "CHECK_MODE": "live"}).check(NUMBER)
         req = m.request_history[0]
     assert req.headers["x-rapidapi-key"] == "rk"
-    assert req.headers["x-rapidapi-host"] == "wp-data.p.rapidapi.com"
+    assert req.headers["x-rapidapi-host"] == "whatsapp-number-validator18.p.rapidapi.com"
 
 
 def test_native_sends_only_key_header():

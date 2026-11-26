@@ -7,7 +7,7 @@ from typing import Mapping, Optional
 VALID_PROVIDERS = ("rapidapi", "native")
 VALID_MODES = ("live", "cache_first", "cache_only")
 
-DEFAULT_RAPIDAPI_HOST = "wp-data.p.rapidapi.com"
+DEFAULT_RAPIDAPI_HOST = "whatsapp-number-validator18.p.rapidapi.com"
 DEFAULT_RAPIDAPI_CACHE_HOST = "wp-data-db-only.p.rapidapi.com"
 DEFAULT_NATIVE_BASE_URL = "https://whatsapp-proxy.checkleaked.cc"
 # Generous default: a live WhatsApp check can legitimately take many seconds,

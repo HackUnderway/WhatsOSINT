@@ -14,7 +14,7 @@ Get your API key.
 
 Name | Key |
 | ------------------- |-------------- |
-| [WP Data](https://rapidapi.com/airaudoeduardo/api/wp-data/) |  🔑 (Necessary) |
+| [WhatsApp Number Validator](https://rapidapi.com/airaudoeduardo/api/whatsapp-number-validator18) |  🔑 (Necessary) |
 
 - Select the free plan.
 
